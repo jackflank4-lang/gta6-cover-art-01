@@ -1,92 +1,91 @@
-/* Sunset Strip — editor styles (round 3). */
 @font-face {
   font-family: 'Anton';
   src: url('fonts/Anton-Regular.ttf') format('truetype');
   font-weight: 400;
-  font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Oswald';
   src: url('fonts/Oswald.ttf') format('truetype');
   font-weight: 200 700;
-  font-style: normal;
   font-display: swap;
 }
-
-:root { color-scheme: dark; }
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  background: #12061f;
-  color: #f5efff;
+  background: #0b0620;
+  color: #f2ecff;
   font-family: 'Oswald', system-ui, sans-serif;
 }
-header { padding: 18px 24px 6px; }
+header { padding: 18px 24px 4px; }
 header h1 {
   margin: 0;
   font-family: 'Anton', sans-serif;
-  font-size: 40px;
+  font-size: 34px;
   letter-spacing: 1px;
-  color: #fff;
-  text-shadow: 0 0 18px #ff2e88, 3px 3px 0 #ff7a3d;
+  color: #ffffff;
+  text-shadow: 0 0 18px rgba(255, 45, 149, 0.8), 0 0 4px rgba(0, 229, 255, 0.9);
 }
-header p { margin: 6px 0 0; color: #d9c8ff; }
+header p { margin: 4px 0 0; color: #b9a8e8; }
 main {
   display: flex;
+  flex-wrap: wrap;
   gap: 24px;
   padding: 16px 24px 32px;
-  flex-wrap: wrap;
   align-items: flex-start;
 }
-.preview { flex: 1 1 480px; }
+.preview { flex: 1 1 420px; }
 #cover {
   width: 100%;
   max-width: 640px;
   height: auto;
   display: block;
-  border: 3px solid #ffd23f;
-  box-shadow: 0 0 32px rgba(255, 46, 136, 0.45);
-  background: #12061f;
+  border: 2px solid #00e5ff;
+  box-shadow: 0 0 24px rgba(0, 229, 255, 0.35), 0 0 48px rgba(255, 45, 149, 0.25);
 }
-.controls { flex: 1 1 320px; max-width: 460px; }
+.controls { flex: 1 1 300px; max-width: 420px; }
 .field { display: block; margin-bottom: 12px; font-weight: 600; }
 .field input {
   display: block;
   width: 100%;
   margin-top: 4px;
-  padding: 8px 10px;
-  font: 600 18px 'Oswald', sans-serif;
+  padding: 8px;
+  font: inherit;
+  background: #160a33;
   color: #fff;
-  background: #241038;
-  border: 1px solid #7a4fd0;
-  border-radius: 6px;
+  border: 1px solid #5b3fae;
+  border-radius: 4px;
 }
-.size-pick { border: 1px solid #7a4fd0; border-radius: 6px; margin: 0 0 14px; }
-.size-pick label { display: block; padding: 3px 0; cursor: pointer; }
+.sizes { border: 1px solid #5b3fae; border-radius: 4px; margin: 0 0 14px; }
+.sizes label { display: block; padding: 3px 0; }
 .panel-box {
-  border: 1px solid #7a4fd0;
-  border-radius: 8px;
-  padding: 10px 12px;
-  margin-bottom: 10px;
-  background: #1c0a2e;
-}
-.panel-box h3 { margin: 0 0 4px; font-family: 'Anton', sans-serif; font-weight: 400; letter-spacing: 1px; }
-.photo-name { color: #ffd23f; font-size: 14px; margin-bottom: 8px; }
-.panel-box .row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
-.panel-box button, .export button {
-  font: 600 15px 'Oswald', sans-serif;
-  color: #12061f;
-  background: #ffd23f;
-  border: 0;
+  border: 1px solid #5b3fae;
   border-radius: 6px;
-  padding: 7px 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: #12082e;
+}
+.panel-box h3 { margin: 0 0 8px; font-family: 'Anton', sans-serif; letter-spacing: 1px; }
+.panel-box button {
+  font: inherit;
+  padding: 6px 10px;
+  margin: 0 6px 8px 0;
+  background: #1c0f3d;
+  color: #fff;
+  border: 1px solid #00e5ff;
+  border-radius: 4px;
   cursor: pointer;
 }
-.panel-box button:hover, .export button:hover { background: #ff9a3d; }
 .panel-box label { display: block; font-size: 14px; margin-top: 4px; }
-.panel-box input[type="range"] { width: 100%; accent-color: #ff2e88; }
-.export { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
-.export button { background: #22e6ff; }
-.export button:hover { background: #7df3ff; }
-.note { color: #d9c8ff; font-size: 14px; }
+.panel-box input[type=range] { width: 100%; }
+#fill-all, #export {
+  font: inherit;
+  font-weight: 600;
+  padding: 10px 14px;
+  margin: 4px 6px 4px 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+#fill-all { background: #1c0f3d; color: #fff; border: 1px solid #ffc233; }
+#export { background: #ff2d95; color: #fff; border: 1px solid #ff2d95; }
+.note { color: #b9a8e8; font-size: 13px; }

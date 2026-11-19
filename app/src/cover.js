@@ -1,7 +1,8 @@
-// Sunset Strip — cover renderer for gta6-cover-art-01 (round 3).
-// Draws a multi-panel GTA-style poster: a wide hero band on top and three
-// equal panels in a row below it, a golden-hour sunset grade, a retro sun
-// glyph, and bold Anton / Oswald lettering. Pure canvas, no network.
+// Neon Skyline renderer: 3-panel GTA-style cover art, night neon grade.
+// Panels: landscape/square = 3 vertical columns, the middle one dropped
+// (a skyline stagger); portrait = one wide hero on top, two panels below.
+// Every panel gets its own photo (cover-fit + zoom/pan), a purple-blue
+// neon grade, glowing dividers, a crescent moon, and a bold title band.
 
 export const SIZES = {
   square: { w: 1080, h: 1080 },
@@ -9,198 +10,259 @@ export const SIZES = {
   landscape: { w: 1920, h: 1080 },
 };
 
-// Hero height as a fraction of the cover height, per size.
-const HERO_FRAC = { square: 0.55, portrait: 0.52, landscape: 0.58 };
-const DIVIDER = 6; // neon divider thickness, px at 1080 width
+const NEON = {
+  cyan: '#00e5ff',
+  magenta: '#ff2d95',
+  amber: '#ffc233',
+  ink: '#0b0620',
+};
 
-export function layoutFor(sizeName) {
-  const { w, h } = SIZES[sizeName];
-  const heroH = Math.round(h * HERO_FRAC[sizeName]);
-  const bottomY = heroH + DIVIDER;
-  const bottomH = h - bottomY;
-  const pw = Math.floor((w - DIVIDER * 2) / 3);
-  const panels = [0, 1, 2].map((i) => ({
-    x: i * (pw + DIVIDER),
-    y: bottomY,
-    w: i === 2 ? w - 2 * (pw + DIVIDER) : pw,
-    h: bottomH,
-  }));
-  return {
-    w,
-    h,
-    hero: { x: 0, y: 0, w, h: heroH },
-    panels,
-    // Title band sits fully inside the hero, above the divider, so the
-    // subtitle never straddles the hero/bottom boundary.
-    titleBand: { x: 0, y: heroH - Math.round(h * 0.17), w, h: Math.round(h * 0.17) },
-  };
+// Panel rectangles for a size. Portrait: hero top, two below. The rest:
+// three vertical columns, middle column dropped 10% like a skyline step.
+export function layoutFor(sizeName, W, H) {
+  if (sizeName === 'portrait') {
+    const heroH = Math.round(H * 0.56);
+    const half = Math.floor(W / 2);
+    return [
+      { x: 0, y: 0, w: W, h: heroH },
+      { x: 0, y: heroH, w: half, h: H - heroH },
+      { x: half, y: heroH, w: W - half, h: H - heroH },
+    ];
+  }
+  const drop = Math.round(H * 0.1);
+  const w1 = Math.floor(W * 0.34);
+  const w2 = Math.floor(W * 0.32);
+  return [
+    { x: 0, y: 0, w: w1, h: H },
+    { x: w1, y: drop, w: w2, h: H - drop },
+    { x: w1 + w2, y: 0, w: W - w1 - w2, h: H },
+  ];
 }
 
-// Draw one photo into a rect, cover-fit, with zoom and pan offsets.
-// panX / panY are in [-1, 1]: -1 shows the left/top edge, 1 the right/bottom.
-export function drawPhotoInto(ctx, photo, rect, zoom, panX, panY) {
-  if (!photo || !photo.naturalWidth) return;
-  const z = Math.max(0.5, zoom || 1);
-  const scale = Math.max(rect.w / photo.naturalWidth, rect.h / photo.naturalHeight) * z;
-  const dw = photo.naturalWidth * scale;
-  const dh = photo.naturalHeight * scale;
-  const maxX = Math.max(0, (dw - rect.w) / 2);
-  const maxY = Math.max(0, (dh - rect.h) / 2);
-  const dx = rect.x + (rect.w - dw) / 2 - (panX || 0) * maxX;
-  const dy = rect.y + (rect.h - dh) / 2 - (panY || 0) * maxY;
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(rect.x, rect.y, rect.w, rect.h);
-  ctx.clip();
-  ctx.drawImage(photo, dx, dy, dw, dh);
-  ctx.restore();
+// Cover-fit draw with zoom and pan. panX/panY are -1..1 fractions of the
+// slack (the part of the scaled photo that sticks out past the box).
+function drawPhotoInto(ctx, img, box, zoom, panX, panY) {
+  const iw = img.naturalWidth;
+  const ih = img.naturalHeight;
+  const scale = Math.max(box.w / iw, box.h / ih) * zoom;
+  const dw = iw * scale;
+  const dh = ih * scale;
+  const slackX = Math.max(0, (dw - box.w) / 2);
+  const slackY = Math.max(0, (dh - box.h) / 2);
+  const dx = box.x + (box.w - dw) / 2 - panX * slackX;
+  const dy = box.y + (box.h - dh) / 2 - panY * slackY;
+  ctx.drawImage(img, dx, dy, dw, dh);
 }
 
-// Golden-hour grade: warm orange wash from the top, magenta/violet from the
-// bottom, plus a vignette that darkens the corners.
-function applyGrade(ctx, w, h) {
-  const g = ctx.createLinearGradient(0, 0, 0, h);
-  g.addColorStop(0, 'rgba(255, 140, 40, 0.20)');
-  g.addColorStop(0.45, 'rgba(255, 90, 120, 0.10)');
-  g.addColorStop(1, 'rgba(90, 20, 140, 0.28)');
-  ctx.save();
-  ctx.globalCompositeOperation = 'overlay';
+// A panel with no photo yet: deep night gradient + faint diagonal rays,
+// so the cover still reads as a poster instead of a black hole.
+function drawPlaceholder(ctx, box, i) {
+  const g = ctx.createLinearGradient(box.x, box.y, box.x + box.w, box.y + box.h);
+  g.addColorStop(0, i === 1 ? '#1c0f3d' : '#160a33');
+  g.addColorStop(1, '#0b0620');
   ctx.fillStyle = g;
-  ctx.fillRect(0, 0, w, h);
+  ctx.fillRect(box.x, box.y, box.w, box.h);
+  ctx.save();
+  ctx.strokeStyle = 'rgba(0, 229, 255, 0.10)';
+  ctx.lineWidth = Math.max(2, box.w * 0.012);
+  for (let k = -1; k <= 2; k += 1) {
+    ctx.beginPath();
+    ctx.moveTo(box.x + k * box.w * 0.5, box.y + box.h);
+    ctx.lineTo(box.x + box.w + k * box.w * 0.5, box.y);
+    ctx.stroke();
+  }
   ctx.restore();
-  const v = ctx.createRadialGradient(
-    w / 2, h / 2, Math.min(w, h) * 0.35,
-    w / 2, h / 2, Math.max(w, h) * 0.75,
+}
+
+// Night neon grade: purple-blue wash, magenta glow low, cyan glow high,
+// and a vignette so the panels sink into the night.
+function gradePanel(ctx, box) {
+  ctx.fillStyle = 'rgba(24, 8, 64, 0.26)';
+  ctx.fillRect(box.x, box.y, box.w, box.h);
+  let glow = ctx.createRadialGradient(
+    box.x + box.w * 0.15, box.y + box.h * 0.95, 0,
+    box.x + box.w * 0.15, box.y + box.h * 0.95, box.w * 0.9,
   );
-  v.addColorStop(0, 'rgba(0,0,0,0)');
-  v.addColorStop(1, 'rgba(10,0,30,0.42)');
+  glow.addColorStop(0, 'rgba(255, 45, 149, 0.22)');
+  glow.addColorStop(1, 'rgba(255, 45, 149, 0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(box.x, box.y, box.w, box.h);
+  glow = ctx.createRadialGradient(
+    box.x + box.w * 0.85, box.y + box.h * 0.05, 0,
+    box.x + box.w * 0.85, box.y + box.h * 0.05, box.w * 0.8,
+  );
+  glow.addColorStop(0, 'rgba(0, 229, 255, 0.16)');
+  glow.addColorStop(1, 'rgba(0, 229, 255, 0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(box.x, box.y, box.w, box.h);
+  const v = ctx.createRadialGradient(
+    box.x + box.w / 2, box.y + box.h / 2, Math.min(box.w, box.h) * 0.35,
+    box.x + box.w / 2, box.y + box.h / 2, Math.max(box.w, box.h) * 0.75,
+  );
+  v.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  v.addColorStop(1, 'rgba(0, 0, 0, 0.38)');
   ctx.fillStyle = v;
-  ctx.fillRect(0, 0, w, h);
+  ctx.fillRect(box.x, box.y, box.w, box.h);
 }
 
-// Retro sun: a striped circle, drawn into the hero's top-right corner.
-function drawSun(ctx, cx, cy, r) {
+// Glowing neon seams between the panels.
+function drawDividers(ctx, boxes, sizeName, W, H) {
   ctx.save();
-  const g = ctx.createLinearGradient(cx, cy - r, cx, cy + r);
-  g.addColorStop(0, '#ffd23f');
-  g.addColorStop(0.55, '#ff7a3d');
-  g.addColorStop(1, '#ff2e88');
-  ctx.fillStyle = g;
+  ctx.shadowBlur = Math.max(8, W * 0.008);
+  if (sizeName === 'portrait') {
+    ctx.shadowColor = NEON.amber;
+    ctx.strokeStyle = NEON.amber;
+    ctx.lineWidth = Math.max(4, W * 0.005);
+    ctx.beginPath();
+    ctx.moveTo(0, boxes[0].h);
+    ctx.lineTo(W, boxes[0].h);
+    ctx.stroke();
+    ctx.shadowColor = NEON.magenta;
+    ctx.strokeStyle = NEON.magenta;
+    ctx.beginPath();
+    ctx.moveTo(boxes[1].w, boxes[0].h);
+    ctx.lineTo(boxes[1].w, H);
+    ctx.stroke();
+  } else {
+    const colors = [NEON.cyan, NEON.magenta];
+    for (let i = 0; i < 2; i += 1) {
+      const x = boxes[i].x + boxes[i].w;
+      ctx.shadowColor = colors[i];
+      ctx.strokeStyle = colors[i];
+      ctx.lineWidth = Math.max(4, W * 0.004);
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, H);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+// Crescent moon + sparkle stars. Landscape/square: the moon hangs in the
+// dark sky gap the dropped middle column leaves at the top, so it never
+// covers a face. Portrait: top-right of the hero, in the open sky.
+function drawMoon(ctx, W, H, sizeName, boxes) {
+  let r;
+  let cx;
+  let cy;
+  if (sizeName === 'portrait') {
+    r = Math.max(18, H * 0.045);
+    cx = W - r * 1.6;
+    cy = r * 1.7;
+  } else {
+    const drop = boxes[1].y;
+    r = Math.min(H * 0.045, drop * 0.36);
+    cx = boxes[1].x + boxes[1].w / 2;
+    cy = drop / 2;
+  }
+  ctx.save();
+  ctx.shadowColor = '#ffe9a8';
+  ctx.shadowBlur = r * 0.9;
+  ctx.fillStyle = '#ffe9a8';
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.fill();
-  // Cut horizontal stripes across the lower half.
-  ctx.globalCompositeOperation = 'destination-out';
-  let y = cy + r * 0.05;
-  let th = r * 0.07;
-  while (y < cy + r) {
-    ctx.fillRect(cx - r - 2, y, r * 2 + 4, th);
-    y += th * 2.4;
-    th *= 1.35;
-  }
-  ctx.restore();
-}
-
-// Shrink the title until it fits the band width.
-function fitTitleFont(ctx, title, bandW, startPx) {
-  let px = startPx;
-  ctx.font = `${px}px Anton, sans-serif`;
-  while (px > 24 && ctx.measureText(title).width > bandW) {
-    px -= 4;
-    ctx.font = `${px}px Anton, sans-serif`;
-  }
-  return px;
-}
-
-// Draw the title + subtitle centred in the title band.
-function drawLettering(ctx, layout, title, subtitle) {
-  const { w, h } = layout;
-  const band = layout.titleBand;
-  const cy = band.y + band.h / 2;
-  // Dark scrim behind the lettering so it reads over any photo.
-  const scrim = ctx.createLinearGradient(0, band.y, 0, band.y + band.h);
-  scrim.addColorStop(0, 'rgba(8,0,24,0)');
-  scrim.addColorStop(0.5, 'rgba(8,0,24,0.62)');
-  scrim.addColorStop(1, 'rgba(8,0,24,0)');
-  ctx.fillStyle = scrim;
-  ctx.fillRect(0, band.y, w, band.h);
-
-  const titleText = (title || 'SUNSET HEIST').toUpperCase();
-  const titlePx = fitTitleFont(ctx, titleText, w * 0.92, Math.round(w * 0.105));
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.save();
-  ctx.shadowColor = '#ff2e88';
-  ctx.shadowBlur = Math.round(w * 0.02);
-  ctx.lineWidth = Math.max(2, Math.round(w * 0.006));
-  ctx.strokeStyle = '#ff2e88';
-  ctx.strokeText(titleText, w / 2, cy - Math.round(h * 0.018));
   ctx.shadowBlur = 0;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText(titleText, w / 2, cy - Math.round(h * 0.018));
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.beginPath();
+  ctx.arc(cx + r * 0.45, cy - r * 0.25, r * 0.85, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
-
-  const sub = (subtitle || 'VICE CITY').toUpperCase();
-  const subPx = Math.round(w * 0.032);
-  ctx.font = `600 ${subPx}px Oswald, sans-serif`;
-  try { ctx.letterSpacing = `${Math.round(w * 0.012)}px`; } catch (e) { /* older canvas */ }
-  ctx.fillStyle = '#ffd23f';
-  ctx.fillText(sub, w / 2, cy + Math.round(h * 0.052));
-  try { ctx.letterSpacing = '0px'; } catch (e) { /* older canvas */ }
+  ctx.save();
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = '#ffffff';
+  ctx.shadowBlur = r * 0.35;
+  const stars = [
+    [cx - r * 2.6, cy + r * 0.4, r * 0.16],
+    [cx - r * 1.2, cy + r * 1.6, r * 0.12],
+    [cx + r * 1.4, cy + r * 1.1, r * 0.14],
+  ];
+  for (const [sx, sy, sr] of stars) {
+    ctx.beginPath();
+    ctx.moveTo(sx, sy - sr * 2);
+    ctx.lineTo(sx + sr * 0.5, sy - sr * 0.5);
+    ctx.lineTo(sx + sr * 2, sy);
+    ctx.lineTo(sx + sr * 0.5, sy + sr * 0.5);
+    ctx.lineTo(sx, sy + sr * 2);
+    ctx.lineTo(sx - sr * 0.5, sy + sr * 0.5);
+    ctx.lineTo(sx - sr * 2, sy);
+    ctx.lineTo(sx - sr * 0.5, sy - sr * 0.5);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
-// Main entry: draw the whole cover for `state` at `sizeName` onto ctx.
-// state: { title, subtitle, panels: [{photo, zoom, panX, panY}] } — panels[0]
-// is the hero, panels[1..3] are the bottom row.
-export function drawCover(ctx, state, sizeName) {
-  const layout = layoutFor(sizeName);
-  const { w, h } = layout;
-  ctx.clearRect(0, 0, w, h);
-  ctx.fillStyle = '#12061f';
-  ctx.fillRect(0, 0, w, h);
+// Shrink the title until it fits maxW, then draw it with a cyan outline
+// and a magenta glow; the subtitle sits under it, letterspaced amber.
+function drawTitleBand(ctx, state, W, H, sizeName, boxes) {
+  const bandH = Math.round(H * 0.24);
+  const bandY = sizeName === 'portrait' ? boxes[0].h - bandH : H - bandH;
+  const grad = ctx.createLinearGradient(0, bandY, 0, bandY + bandH);
+  grad.addColorStop(0, 'rgba(10, 4, 28, 0.55)');
+  grad.addColorStop(1, 'rgba(10, 4, 28, 0.94)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, bandY, W, bandH);
+  const edge = ctx.createLinearGradient(0, 0, W, 0);
+  edge.addColorStop(0, NEON.cyan);
+  edge.addColorStop(0.5, NEON.magenta);
+  edge.addColorStop(1, NEON.amber);
+  ctx.fillStyle = edge;
+  ctx.fillRect(0, bandY, W, Math.max(3, H * 0.004));
 
-  const panels = state.panels || [];
-  // Hero photo (or a sunset gradient when empty).
-  const hero = panels[0];
-  if (hero && hero.photo) {
-    drawPhotoInto(ctx, hero.photo, layout.hero, hero.zoom, hero.panX, hero.panY);
-  } else {
-    const sky = ctx.createLinearGradient(0, 0, 0, layout.hero.h);
-    sky.addColorStop(0, '#2b0a4d');
-    sky.addColorStop(0.55, '#c22e6e');
-    sky.addColorStop(1, '#ff8a3d');
-    ctx.fillStyle = sky;
-    ctx.fillRect(layout.hero.x, layout.hero.y, layout.hero.w, layout.hero.h);
+  const padX = W * 0.045;
+  const maxW = W - padX * 2;
+  const title = (state.title || 'NEON SKYLINE').toUpperCase();
+  let size = H * 0.105;
+  ctx.textBaseline = 'alphabetic';
+  while (size > H * 0.04) {
+    ctx.font = `${size}px Anton, sans-serif`;
+    if (ctx.measureText(title).width <= maxW) break;
+    size *= 0.92;
   }
-  // Bottom panels.
-  for (let i = 0; i < 3; i += 1) {
-    const p = panels[i + 1];
-    const rect = layout.panels[i];
-    if (p && p.photo) {
-      drawPhotoInto(ctx, p.photo, rect, p.zoom, p.panX, p.panY);
-    } else {
-      const g = ctx.createLinearGradient(rect.x, rect.y, rect.x + rect.w, rect.y + rect.h);
-      g.addColorStop(0, '#3a1150');
-      g.addColorStop(1, '#12061f');
-      ctx.fillStyle = g;
-      ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-    }
+  const titleY = bandY + bandH * 0.58;
+  ctx.save();
+  ctx.shadowColor = NEON.magenta;
+  ctx.shadowBlur = H * 0.028;
+  ctx.lineWidth = Math.max(2, H * 0.008);
+  ctx.strokeStyle = NEON.cyan;
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeText(title, padX, titleY);
+  ctx.fillText(title, padX, titleY);
+  ctx.restore();
+
+  const sub = (state.subtitle || '').toUpperCase();
+  if (sub) {
+    const subSize = Math.max(12, H * 0.03);
+    ctx.font = `600 ${subSize}px Oswald, sans-serif`;
+    if ('letterSpacing' in ctx) ctx.letterSpacing = `${subSize * 0.22}px`;
+    ctx.fillStyle = NEON.amber;
+    ctx.fillText(sub, padX, bandY + bandH * 0.88);
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
   }
+}
 
-  applyGrade(ctx, w, h);
-
-  // Neon dividers: amber rule under the hero, cyan rules between bottom panels.
-  ctx.fillStyle = '#ffd23f';
-  ctx.fillRect(0, layout.hero.h, w, DIVIDER);
-  ctx.fillStyle = '#22e6ff';
-  for (let i = 1; i < 3; i += 1) {
-    const x = layout.panels[i].x - DIVIDER;
-    ctx.fillRect(x, layout.panels[0].y, DIVIDER, layout.panels[0].h);
-  }
-
-  // Retro sun in the hero's top-right corner.
-  const sunR = Math.round(w * 0.085);
-  drawSun(ctx, w - sunR * 1.35, sunR * 1.5, sunR);
-
-  drawLettering(ctx, layout, state.title, state.subtitle);
+export function renderCover(canvas, state, sizeName) {
+  const { w: W, h: H } = SIZES[sizeName] || SIZES.square;
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = NEON.ink;
+  ctx.fillRect(0, 0, W, H);
+  const boxes = layoutFor(sizeName, W, H);
+  state.panels.forEach((panel, i) => {
+    const box = boxes[i];
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(box.x, box.y, box.w, box.h);
+    ctx.clip();
+    if (panel.photo) drawPhotoInto(ctx, panel.photo, box, panel.zoom, panel.panX, panel.panY);
+    else drawPlaceholder(ctx, box, i);
+    gradePanel(ctx, box);
+    ctx.restore();
+  });
+  drawDividers(ctx, boxes, sizeName, W, H);
+  drawMoon(ctx, W, H, sizeName, boxes);
+  drawTitleBand(ctx, state, W, H, sizeName, boxes);
 }
