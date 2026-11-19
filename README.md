@@ -1,46 +1,39 @@
-# Vice Nights — GTA-style cover maker
-
 [![make.fun · gta6-cover-art-01](https://make.fun/badge/gta6-cover-art-01.svg)](https://make.fun/bounty/gta6-cover-art-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-cover-art-01)
 [![rank](https://make.fun/badge/gta6-cover-art-01/jackflank4-lang/gta6-cover-art-01/rank.svg)](https://make.fun/bounty/gta6-cover-art-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-cover-art-01)
 [![reward](https://make.fun/badge/gta6-cover-art-01/jackflank4-lang/gta6-cover-art-01/reward.svg)](https://make.fun/bounty/gta6-cover-art-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-cover-art-01)
 
-Vice Nights turns your photos and a caption into GTA-style cover art: three
-photo panels (one hero, two supporting) under a teal-to-magenta neon grade,
-with a bold title band, exported as a PNG to share. It runs entirely offline
-in desktop Chrome — your photos never leave your machine.
+# Sunset Strip — GTA 6-style Cover Maker
 
-## How to use
+Turn a photo and a caption into GTA 6-style cover art, in your browser, offline. No upload, no account, no watermark: your photos never leave your machine.
 
-1. Serve the app: `node serve.ts`, then open http://localhost:8080.
-2. Pick a cover size: Square 1080 x 1080, Portrait 1080 x 1350, or
-   Landscape 1920 x 1080.
-3. For each of the three panels, choose a photo from your machine (or press
-   Sample), then crop it with the Zoom and Pan sliders.
-4. Type a title and a subtitle — the preview updates live.
-5. Press Export PNG. The cover downloads at the size you picked.
+## What it makes
 
-## The cover
+A multi-panel poster in the style of GTA 6's covers: a wide hero band on top and three panels in a row below it, a golden-hour sunset grade, a retro striped sun, and bold Anton / Oswald lettering. The title sits on a dark scrim over the hero so it reads over any photo.
 
-- **Three panels, one hero.** The hero panel takes the big slot; two smaller
-  panels stack beside (square, landscape) or below (portrait) it. Each panel
-  takes its own photo, or all three can share one.
-- **Neon grade.** Every panel gets a teal-shadow / magenta-highlight duotone
-  and a vignette, with a thin cyan divider between panels.
-- **Title band.** The title is set in Anton, white with a cyan outline and a
-  magenta offset shadow, tilted two degrees; the subtitle is letterspaced
-  Oswald in amber, beside a retro sun glyph.
-- **Three post sizes.** Square 1080 x 1080, Portrait 1080 x 1350, Landscape
-  1920 x 1080 — the panel layout re-flows for each.
+## How to use it
 
-## Files
+1. Open `app/index.html` in desktop Chrome (or run `node serve.ts` and open http://localhost:8080).
+2. Pick a post size: **Square 1080 × 1080**, **Portrait 1080 × 1350**, or **Landscape 1920 × 1080**.
+3. Load a photo into each panel — upload your own, or use a sample. Drag the **Zoom** and **Pan X / Pan Y** sliders to frame each photo.
+4. Type your **Title** and **Subtitle**; the preview updates live.
+5. Hit **Export** for the size you want. The PNG downloads, ready to post.
 
-- `app/` — the static app (no build step, no network request). Fonts Anton
-  and Oswald are vendored under `app/fonts/` under the SIL Open Font License.
-- `app/samples/` — two sample photos made with an image model, free to use.
-- `screenshots/` — the cover and the editor at work.
-- `main.ts` — hands the app in: copies `app/` and `screenshots/` to
-  `/output` and writes `/output/dossier.json`.
+## Features
 
-Everything in this entry is original: no Rockstar Games logo, wordmark,
-artwork, or font. Built for the [gta6-cover-art-01](https://make.fun/bounty/gta6-cover-art-01)
-bounty on make.fun.
+- Four panels (hero + three), each with its own photo, zoom, and pan.
+- One photo can fill several panels, or each panel can hold a different photo.
+- Live preview that is exactly what gets exported — no surprises.
+- Three export sizes in one click: 1080 × 1080, 1080 × 1350, 1920 × 1080.
+- Fully offline: every script, font, and image is a file under `app/`. No network request is made.
+- Original art only: no Rockstar Games logo, artwork, or font. The Anton and Oswald fonts are licensed under the SIL Open Font License (see `app/fonts/OFL-Anton.txt` and `app/fonts/OFL-Oswald.txt`).
+
+## Layout
+
+- `app/` — the cover maker (static files): `index.html`, `style.css`, `src/cover.js` (renderer), `src/main.js` (editor), `src/shots.js` (screenshot staging), `fonts/` (Anton + Oswald, SIL OFL), `samples/` (two sample photos, free to use).
+- `main.ts` — hands the app in: copies `app/` and `screenshots/` to `/output` and writes `/output/dossier.json`.
+- `screenshots/` — four screenshots: the exported cover in landscape, portrait, and square, plus the editor with a photo loaded.
+- `serve.ts` — serves `app/` locally for trying it out.
+
+## License
+
+MIT. See `LICENSE`.

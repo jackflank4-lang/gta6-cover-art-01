@@ -3,54 +3,40 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vice Nights — GTA-style cover maker</title>
-<link rel="stylesheet" href="./style.css">
+<title>Sunset Strip — GTA 6-style Cover Maker</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<main class="app">
-  <section class="controls">
-    <h1>Vice Nights</h1>
-    <p>Three photos and a caption, made into GTA-style cover art.</p>
-    <label>Title <input id="title" type="text" maxlength="32" value="Midnight Drive"></label>
-    <label>Subtitle <input id="subtitle" type="text" maxlength="24" value="OCEAN BLVD"></label>
-    <fieldset class="sizes">
-      <legend>Cover size</legend>
-      <label><input type="radio" name="size" value="square" checked> Square 1080 x 1080</label>
-      <label><input type="radio" name="size" value="portrait"> Portrait 1080 x 1350</label>
-      <label><input type="radio" name="size" value="landscape"> Landscape 1920 x 1080</label>
-    </fieldset>
-    <div class="panel-box" data-panel="0">
-      <h2>Panel 1 — Hero</h2>
-      <button type="button">Choose photo</button>
-      <button type="button">Sample</button>
-      <input type="file" accept="image/*" hidden>
-      <label>Zoom <input type="range" min="1" max="3" step="0.1" value="1"></label>
-      <label>Pan X <input type="range" min="-1" max="1" step="0.1" value="0"></label>
-      <label>Pan Y <input type="range" min="-1" max="1" step="0.1" value="0"></label>
-    </div>
-    <div class="panel-box" data-panel="1">
-      <h2>Panel 2</h2>
-      <button type="button">Choose photo</button>
-      <button type="button">Sample</button>
-      <input type="file" accept="image/*" hidden>
-      <label>Zoom <input type="range" min="1" max="3" step="0.1" value="1"></label>
-      <label>Pan X <input type="range" min="-1" max="1" step="0.1" value="0"></label>
-      <label>Pan Y <input type="range" min="-1" max="1" step="0.1" value="0"></label>
-    </div>
-    <div class="panel-box" data-panel="2">
-      <h2>Panel 3</h2>
-      <button type="button">Choose photo</button>
-      <button type="button">Sample</button>
-      <input type="file" accept="image/*" hidden>
-      <label>Zoom <input type="range" min="1" max="3" step="0.1" value="1"></label>
-      <label>Pan X <input type="range" min="-1" max="1" step="0.1" value="0"></label>
-      <label>Pan Y <input type="range" min="-1" max="1" step="0.1" value="0"></label>
-    </div>
-    <button id="export" type="button">Export PNG</button>
-    <p id="status" role="status"></p>
+<header>
+  <h1>Sunset Strip</h1>
+  <p>Turn a photo and a caption into GTA 6-style cover art. Works offline — your photos never leave this machine.</p>
+</header>
+<main>
+  <section class="preview">
+    <canvas id="cover" width="1080" height="1080"></canvas>
   </section>
-  <canvas id="cover" width="1080" height="1080" aria-label="The cover"></canvas>
+  <section class="controls">
+    <label class="field">Title
+      <input id="title" type="text" value="SUNSET HEIST" maxlength="40">
+    </label>
+    <label class="field">Subtitle
+      <input id="subtitle" type="text" value="VICE CITY" maxlength="40">
+    </label>
+    <fieldset class="size-pick">
+      <legend>Post size</legend>
+      <label><input type="radio" name="size" value="square" checked> Square 1080 &times; 1080</label>
+      <label><input type="radio" name="size" value="portrait"> Portrait 1080 &times; 1350</label>
+      <label><input type="radio" name="size" value="landscape"> Landscape 1920 &times; 1080</label>
+    </fieldset>
+    <div id="panels"></div>
+    <div class="export">
+      <button type="button" data-export="square">Export square PNG</button>
+      <button type="button" data-export="portrait">Export portrait PNG</button>
+      <button type="button" data-export="landscape">Export landscape PNG</button>
+    </div>
+    <p class="note">Tip: load a photo into each panel, drag the zoom and pan sliders to frame it, then export the size you want to post.</p>
+  </section>
 </main>
-<script type="module" src="./src/main.js"></script>
+<script type="module" src="src/main.js"></script>
 </body>
 </html>

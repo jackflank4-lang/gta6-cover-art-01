@@ -1,167 +1,206 @@
-// Renders the Vice Nights cover: three photo panels (one hero, two
-// supporting) under a teal/magenta duotone grade, with a bold title band
-// along the foot. Every size draws the same cover, re-laid-out.
+// Sunset Strip — cover renderer for gta6-cover-art-01 (round 3).
+// Draws a multi-panel GTA-style poster: a wide hero band on top and three
+// equal panels in a row below it, a golden-hour sunset grade, a retro sun
+// glyph, and bold Anton / Oswald lettering. Pure canvas, no network.
 
-/** The three export sizes, in pixels. */
 export const SIZES = {
   square: { w: 1080, h: 1080 },
   portrait: { w: 1080, h: 1350 },
   landscape: { w: 1920, h: 1080 },
 };
 
-/**
- * Panel rectangles for a size, as fractions of the canvas. `band` is the
- * fraction of the height the title band takes. Panels fill the rest.
- */
-export function layout(sizeName) {
-  if (sizeName === 'portrait') {
-    return {
-      band: 0.19,
-      panels: [
-        { x: 0, y: 0, w: 1, h: 0.48 },
-        { x: 0, y: 0.48, w: 0.5, h: 0.33 },
-        { x: 0.5, y: 0.48, w: 0.5, h: 0.33 },
-      ],
-    };
-  }
-  if (sizeName === 'landscape') {
-    return {
-      band: 0.175,
-      panels: [
-        { x: 0, y: 0, w: 0.56, h: 0.825 },
-        { x: 0.56, y: 0, w: 0.44, h: 0.4125 },
-        { x: 0.56, y: 0.4125, w: 0.44, h: 0.4125 },
-      ],
-    };
-  }
+// Hero height as a fraction of the cover height, per size.
+const HERO_FRAC = { square: 0.55, portrait: 0.52, landscape: 0.58 };
+const DIVIDER = 6; // neon divider thickness, px at 1080 width
+
+export function layoutFor(sizeName) {
+  const { w, h } = SIZES[sizeName];
+  const heroH = Math.round(h * HERO_FRAC[sizeName]);
+  const bottomY = heroH + DIVIDER;
+  const bottomH = h - bottomY;
+  const pw = Math.floor((w - DIVIDER * 2) / 3);
+  const panels = [0, 1, 2].map((i) => ({
+    x: i * (pw + DIVIDER),
+    y: bottomY,
+    w: i === 2 ? w - 2 * (pw + DIVIDER) : pw,
+    h: bottomH,
+  }));
   return {
-    band: 0.185,
-    panels: [
-      { x: 0, y: 0, w: 0.575, h: 0.815 },
-      { x: 0.575, y: 0, w: 0.425, h: 0.4075 },
-      { x: 0.575, y: 0.4075, w: 0.425, h: 0.4075 },
-    ],
+    w,
+    h,
+    hero: { x: 0, y: 0, w, h: heroH },
+    panels,
+    // Title band sits fully inside the hero, above the divider, so the
+    // subtitle never straddles the hero/bottom boundary.
+    titleBand: { x: 0, y: heroH - Math.round(h * 0.17), w, h: Math.round(h * 0.17) },
   };
 }
 
-/**
- * Draws one photo into a panel rect: cover-fit with zoom and pan, then a
- * teal-to-magenta grade, a vignette, and a neon divider around the panel.
- * `panX`/`panY` run -1..1 and shift the photo inside the panel.
- */
-function drawPanel(ctx, photo, rect, zoom, panX, panY) {
+// Draw one photo into a rect, cover-fit, with zoom and pan offsets.
+// panX / panY are in [-1, 1]: -1 shows the left/top edge, 1 the right/bottom.
+export function drawPhotoInto(ctx, photo, rect, zoom, panX, panY) {
+  if (!photo || !photo.naturalWidth) return;
+  const z = Math.max(0.5, zoom || 1);
+  const scale = Math.max(rect.w / photo.naturalWidth, rect.h / photo.naturalHeight) * z;
+  const dw = photo.naturalWidth * scale;
+  const dh = photo.naturalHeight * scale;
+  const maxX = Math.max(0, (dw - rect.w) / 2);
+  const maxY = Math.max(0, (dh - rect.h) / 2);
+  const dx = rect.x + (rect.w - dw) / 2 - (panX || 0) * maxX;
+  const dy = rect.y + (rect.h - dh) / 2 - (panY || 0) * maxY;
   ctx.save();
   ctx.beginPath();
   ctx.rect(rect.x, rect.y, rect.w, rect.h);
   ctx.clip();
-  ctx.fillStyle = '#1b0f2e';
-  ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-  if (photo) {
-    const base = Math.max(rect.w / photo.naturalWidth, rect.h / photo.naturalHeight);
-    const scale = base * zoom;
-    const dw = photo.naturalWidth * scale;
-    const dh = photo.naturalHeight * scale;
-    const ox = Math.max(0, (dw - rect.w) / 2);
-    const oy = Math.max(0, (dh - rect.h) / 2);
-    ctx.drawImage(photo, rect.x + (rect.w - dw) / 2 + panX * ox, rect.y + (rect.h - dh) / 2 + panY * oy, dw, dh);
-    const grade = ctx.createLinearGradient(rect.x, rect.y, rect.x, rect.y + rect.h);
-    grade.addColorStop(0, 'rgba(0, 229, 255, 0.16)');
-    grade.addColorStop(0.55, 'rgba(120, 40, 180, 0.10)');
-    grade.addColorStop(1, 'rgba(255, 0, 128, 0.24)');
-    ctx.fillStyle = grade;
-    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-  }
-  const vig = ctx.createRadialGradient(
-    rect.x + rect.w / 2, rect.y + rect.h / 2, Math.min(rect.w, rect.h) * 0.35,
-    rect.x + rect.w / 2, rect.y + rect.h / 2, Math.max(rect.w, rect.h) * 0.75,
-  );
-  vig.addColorStop(0, 'rgba(8, 0, 18, 0)');
-  vig.addColorStop(1, 'rgba(8, 0, 18, 0.42)');
-  ctx.fillStyle = vig;
-  ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-  ctx.strokeStyle = 'rgba(0, 229, 255, 0.9)';
-  ctx.lineWidth = Math.max(2, rect.w * 0.004);
-  ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+  ctx.drawImage(photo, dx, dy, dw, dh);
   ctx.restore();
 }
 
-/** A small retro sun glyph: a disc with three horizon slats cut through it. */
-function drawSunGlyph(ctx, cx, cy, r) {
+// Golden-hour grade: warm orange wash from the top, magenta/violet from the
+// bottom, plus a vignette that darkens the corners.
+function applyGrade(ctx, w, h) {
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, 'rgba(255, 140, 40, 0.20)');
+  g.addColorStop(0.45, 'rgba(255, 90, 120, 0.10)');
+  g.addColorStop(1, 'rgba(90, 20, 140, 0.28)');
   ctx.save();
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.clip();
+  ctx.globalCompositeOperation = 'overlay';
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
+  const v = ctx.createRadialGradient(
+    w / 2, h / 2, Math.min(w, h) * 0.35,
+    w / 2, h / 2, Math.max(w, h) * 0.75,
+  );
+  v.addColorStop(0, 'rgba(0,0,0,0)');
+  v.addColorStop(1, 'rgba(10,0,30,0.42)');
+  ctx.fillStyle = v;
+  ctx.fillRect(0, 0, w, h);
+}
+
+// Retro sun: a striped circle, drawn into the hero's top-right corner.
+function drawSun(ctx, cx, cy, r) {
+  ctx.save();
   const g = ctx.createLinearGradient(cx, cy - r, cx, cy + r);
   g.addColorStop(0, '#ffd23f');
+  g.addColorStop(0.55, '#ff7a3d');
   g.addColorStop(1, '#ff2e88');
   ctx.fillStyle = g;
-  ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
-  ctx.fillStyle = '#12081f';
-  const gaps = [r * 0.1, r * 0.35, r * 0.6];
-  for (const gy of gaps) {
-    ctx.fillRect(cx - r, cy + gy, r * 2, Math.max(2, r * 0.09));
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  // Cut horizontal stripes across the lower half.
+  ctx.globalCompositeOperation = 'destination-out';
+  let y = cy + r * 0.05;
+  let th = r * 0.07;
+  while (y < cy + r) {
+    ctx.fillRect(cx - r - 2, y, r * 2 + 4, th);
+    y += th * 2.4;
+    th *= 1.35;
   }
   ctx.restore();
 }
 
-/**
- * Draws the whole cover onto `canvas` (sized by `state.size` first).
- * `state` is { title, subtitle, size, panels: [{ photo, zoom, panX, panY }] }.
- */
-export function drawCover(canvas, state) {
-  const size = SIZES[state.size] || SIZES.square;
-  const ctx = canvas.getContext('2d');
-  const W = size.w;
-  const H = size.h;
-  const lay = layout(state.size);
-  const bandH = H * lay.band;
-  const bandY = H - bandH;
-  ctx.fillStyle = '#160a24';
-  ctx.fillRect(0, 0, W, H);
-  state.panels.forEach((panel, i) => {
-    const f = lay.panels[i];
-    drawPanel(ctx, panel.photo, { x: f.x * W, y: f.y * H, w: f.w * W, h: f.h * H }, panel.zoom, panel.panX, panel.panY);
-  });
-  ctx.fillStyle = '#12081f';
-  ctx.fillRect(0, bandY, W, bandH);
-  ctx.fillStyle = '#00e5ff';
-  ctx.fillRect(0, bandY, W, Math.max(3, H * 0.004));
-  const glyphR = bandH * 0.3;
-  drawSunGlyph(ctx, W - bandH * 0.55, bandY + bandH * 0.5, glyphR);
-  const title = (state.title || '').trim().toUpperCase();
-  const sub = (state.subtitle || '').trim().toUpperCase();
-  const tx = W * 0.05;
-  const maxW = W * 0.78;
+// Shrink the title until it fits the band width.
+function fitTitleFont(ctx, title, bandW, startPx) {
+  let px = startPx;
+  ctx.font = `${px}px Anton, sans-serif`;
+  while (px > 24 && ctx.measureText(title).width > bandW) {
+    px -= 4;
+    ctx.font = `${px}px Anton, sans-serif`;
+  }
+  return px;
+}
+
+// Draw the title + subtitle centred in the title band.
+function drawLettering(ctx, layout, title, subtitle) {
+  const { w, h } = layout;
+  const band = layout.titleBand;
+  const cy = band.y + band.h / 2;
+  // Dark scrim behind the lettering so it reads over any photo.
+  const scrim = ctx.createLinearGradient(0, band.y, 0, band.y + band.h);
+  scrim.addColorStop(0, 'rgba(8,0,24,0)');
+  scrim.addColorStop(0.5, 'rgba(8,0,24,0.62)');
+  scrim.addColorStop(1, 'rgba(8,0,24,0)');
+  ctx.fillStyle = scrim;
+  ctx.fillRect(0, band.y, w, band.h);
+
+  const titleText = (title || 'SUNSET HEIST').toUpperCase();
+  const titlePx = fitTitleFont(ctx, titleText, w * 0.92, Math.round(w * 0.105));
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   ctx.save();
-  ctx.translate(tx, bandY + bandH * 0.52);
-  ctx.rotate(-0.035);
-  if (title) {
-    let tSize = bandH * 0.46;
-    ctx.font = `${tSize}px Anton, sans-serif`;
-    while (ctx.measureText(title).width > maxW && tSize > 12) {
-      tSize -= 2;
-      ctx.font = `${tSize}px Anton, sans-serif`;
-    }
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#ff2e88';
-    ctx.fillText(title, tSize * 0.045, tSize * 0.05);
-    ctx.fillStyle = '#ffffff';
-    ctx.strokeStyle = '#00e5ff';
-    ctx.lineWidth = Math.max(2, tSize * 0.045);
-    ctx.strokeText(title, 0, 0);
-    ctx.fillText(title, 0, 0);
-    const subY = tSize * 0.62;
-    if (sub) {
-      let sSize = bandH * 0.15;
-      ctx.font = `600 ${sSize}px Oswald, sans-serif`;
-      try { ctx.letterSpacing = `${Math.round(sSize * 0.28)}px`; } catch (e) { /* no letter-spacing */ }
-      ctx.fillStyle = '#ffd23f';
-      ctx.strokeStyle = 'rgba(0,0,0,0)';
-      ctx.lineWidth = 0;
-      ctx.fillText(sub, 2, subY);
-      try { ctx.letterSpacing = '0px'; } catch (e) { /* reset */ }
+  ctx.shadowColor = '#ff2e88';
+  ctx.shadowBlur = Math.round(w * 0.02);
+  ctx.lineWidth = Math.max(2, Math.round(w * 0.006));
+  ctx.strokeStyle = '#ff2e88';
+  ctx.strokeText(titleText, w / 2, cy - Math.round(h * 0.018));
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(titleText, w / 2, cy - Math.round(h * 0.018));
+  ctx.restore();
+
+  const sub = (subtitle || 'VICE CITY').toUpperCase();
+  const subPx = Math.round(w * 0.032);
+  ctx.font = `600 ${subPx}px Oswald, sans-serif`;
+  try { ctx.letterSpacing = `${Math.round(w * 0.012)}px`; } catch (e) { /* older canvas */ }
+  ctx.fillStyle = '#ffd23f';
+  ctx.fillText(sub, w / 2, cy + Math.round(h * 0.052));
+  try { ctx.letterSpacing = '0px'; } catch (e) { /* older canvas */ }
+}
+
+// Main entry: draw the whole cover for `state` at `sizeName` onto ctx.
+// state: { title, subtitle, panels: [{photo, zoom, panX, panY}] } — panels[0]
+// is the hero, panels[1..3] are the bottom row.
+export function drawCover(ctx, state, sizeName) {
+  const layout = layoutFor(sizeName);
+  const { w, h } = layout;
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#12061f';
+  ctx.fillRect(0, 0, w, h);
+
+  const panels = state.panels || [];
+  // Hero photo (or a sunset gradient when empty).
+  const hero = panels[0];
+  if (hero && hero.photo) {
+    drawPhotoInto(ctx, hero.photo, layout.hero, hero.zoom, hero.panX, hero.panY);
+  } else {
+    const sky = ctx.createLinearGradient(0, 0, 0, layout.hero.h);
+    sky.addColorStop(0, '#2b0a4d');
+    sky.addColorStop(0.55, '#c22e6e');
+    sky.addColorStop(1, '#ff8a3d');
+    ctx.fillStyle = sky;
+    ctx.fillRect(layout.hero.x, layout.hero.y, layout.hero.w, layout.hero.h);
+  }
+  // Bottom panels.
+  for (let i = 0; i < 3; i += 1) {
+    const p = panels[i + 1];
+    const rect = layout.panels[i];
+    if (p && p.photo) {
+      drawPhotoInto(ctx, p.photo, rect, p.zoom, p.panX, p.panY);
+    } else {
+      const g = ctx.createLinearGradient(rect.x, rect.y, rect.x + rect.w, rect.y + rect.h);
+      g.addColorStop(0, '#3a1150');
+      g.addColorStop(1, '#12061f');
+      ctx.fillStyle = g;
+      ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
     }
   }
-  ctx.restore();
+
+  applyGrade(ctx, w, h);
+
+  // Neon dividers: amber rule under the hero, cyan rules between bottom panels.
+  ctx.fillStyle = '#ffd23f';
+  ctx.fillRect(0, layout.hero.h, w, DIVIDER);
+  ctx.fillStyle = '#22e6ff';
+  for (let i = 1; i < 3; i += 1) {
+    const x = layout.panels[i].x - DIVIDER;
+    ctx.fillRect(x, layout.panels[0].y, DIVIDER, layout.panels[0].h);
+  }
+
+  // Retro sun in the hero's top-right corner.
+  const sunR = Math.round(w * 0.085);
+  drawSun(ctx, w - sunR * 1.35, sunR * 1.5, sunR);
+
+  drawLettering(ctx, layout, state.title, state.subtitle);
 }
