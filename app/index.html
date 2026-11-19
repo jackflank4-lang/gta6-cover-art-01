@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vice Cover Studio — GTA-style cover art maker</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main class="app">
+  <section class="controls" aria-label="Cover controls">
+    <h1>Vice Cover Studio</h1>
+    <p class="tagline">Your photo + a caption, made into GTA-style cover art. Offline, nothing uploads.</p>
+
+    <fieldset>
+      <legend>Post size</legend>
+      <div class="sizes">
+        <label><input type="radio" name="size" value="square" checked> Square 1080 &times; 1080</label>
+        <label><input type="radio" name="size" value="portrait"> Portrait 1080 &times; 1350</label>
+        <label><input type="radio" name="size" value="landscape"> Landscape 1920 &times; 1080</label>
+      </div>
+    </fieldset>
+
+    <label class="field">Title
+      <input id="title" type="text" maxlength="28" value="SOLMAR BAY">
+    </label>
+    <label class="field">Subtitle
+      <input id="subtitle" type="text" maxlength="40" value="NEON HEAT">
+    </label>
+
+    <label class="field">Sunset grade
+      <input id="grade" type="range" min="0" max="100" step="1" value="70">
+    </label>
+    <label class="check"><input id="neon" type="checkbox" checked> Neon glow on the title</label>
+
+    <div id="panels" aria-label="Panels"></div>
+
+    <button id="export" type="button">Export PNG</button>
+    <p id="status" role="status"></p>
+  </section>
+  <section class="preview" aria-label="Cover preview">
+    <canvas id="cover" width="1080" height="1080" aria-label="The cover"></canvas>
+    <p class="hint">Live preview — this is exactly what exports.</p>
+  </section>
+</main>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
