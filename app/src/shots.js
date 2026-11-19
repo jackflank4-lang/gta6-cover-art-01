@@ -1,31 +1,36 @@
-// Fixed scenes for screenshots: ?shot=editor shows the page with sample
-// photos; ?shot=cover shows the cover alone. `photo` picks the hero sample,
-// `caption` the title, `subtitle` the subtitle, `size` the post size.
-// window.__shotReady is set by main.js once painted.
-export async function runShot(shot, query, state, loadImage, redraw) {
-  if (shot === 'cover') document.body.classList.add('shot-cover');
-  const size = query.get('size');
-  if (size && (size === 'square' || size === 'portrait' || size === 'landscape')) {
-    state.size = size;
-    const radio = document.querySelector(`input[name="size"][value="${size}"]`);
-    if (radio) radio.checked = true;
+// Stages the fixed scenes the screenshots are taken from. A `?shot=cover`
+// scene loads a photo into every panel and sets the caption; a `?shot=editor`
+// scene loads a photo and leaves the editor on screen to be captured.
+
+/**
+ * Runs one shot scene. `hooks` is the editor's wiring: loadImage, samples,
+ * state, setSize, redraw, setTitle, setSubtitle, ready.
+ */
+export async function runShot(shot, params, hooks) {
+  const size = params.get('size') || 'square';
+  const photoName = params.get('photo') || 'boulevard';
+  const caption = params.get('caption') || 'Midnight Drive';
+  const subtitle = params.get('subtitle') || 'OCEAN BLVD';
+  const pick = (name) => (name === 'pier' ? hooks.samples[1] : hooks.samples[0]);
+  hooks.setSize(size);
+  hooks.setTitle(caption);
+  hooks.setSubtitle(subtitle);
+  if (shot === 'cover') {
+    hooks.state.panels[0].photo = await hooks.loadImage(pick(photoName));
+    hooks.state.panels[1].photo = await hooks.loadImage(pick(photoName === 'pier' ? 'boulevard' : 'pier'));
+    hooks.state.panels[2].photo = await hooks.loadImage(pick(photoName));
+    hooks.state.panels[2].zoom = 1.5;
+    hooks.state.panels[2].panX = -0.3;
+    hooks.state.panels[2].panY = 0.5;
+    if (size === 'portrait') hooks.state.panels[0].panY = 0.65;
+    hooks.redraw();
+  } else {
+    hooks.state.panels[0].photo = await hooks.loadImage(pick(photoName));
+    hooks.state.panels[1].photo = await hooks.loadImage(pick(photoName === 'pier' ? 'boulevard' : 'pier'));
+    hooks.state.panels[2].photo = await hooks.loadImage(pick(photoName));
+    hooks.state.panels[2].zoom = 1.3;
+    hooks.redraw();
   }
-  const caption = query.get('caption');
-  if (caption !== null) {
-    state.title = caption;
-    document.getElementById('title').value = caption;
-  }
-  const subtitle = query.get('subtitle');
-  if (subtitle !== null) {
-    state.subtitle = subtitle;
-    document.getElementById('subtitle').value = subtitle;
-  }
-  const photo = query.get('photo');
-  if (photo) {
-    try {
-      const img = await loadImage(`samples/${photo}.jpg`);
-      state.panels[0].photo = img;
-    } catch (e) { /* keep the default samples */ }
-  }
-  redraw();
+  await document.fonts.ready;
+  hooks.ready();
 }
