@@ -1,198 +1,179 @@
-// Neon Skyline editor: state, controls, export, and the debug/test API
-// the CDP driver uses (window.__cover, window.__shotReady,
-// window.__coverErrors). Photos are read on the machine only, never sent
-// anywhere; export draws the same renderCover the preview uses.
+// Vice Lights Studio — app logic: state, photo loading, export, CDP test interface.
+import { ANTON_WOFF2_B64 } from "../fonts/anton.js";
+import { renderCover, SIZES } from "./cover.js";
 
-import { renderCover, SIZES } from './cover.js';
-import { stageShot } from './shots.js';
+window.__coverErrors = [];
+window.addEventListener("error", (e) => window.__coverErrors.push(String(e.message || e.error)));
 
-export const SAMPLES = ['boulevard', 'pier'];
-
-export const state = {
-  title: 'NEON SKYLINE',
-  subtitle: 'VICE CITY NIGHTS',
-  size: 'square',
+const state = {
+  title: "VICE LIGHTS",
+  subtitle: "Neon Coast",
+  grade: "sunset",
+  size: "square",
   panels: [
-    { photo: null, photoName: '', zoom: 1, panX: 0, panY: 0 },
-    { photo: null, photoName: '', zoom: 1, panX: 0, panY: 0 },
-    { photo: null, photoName: '', zoom: 1, panX: 0, panY: 0 },
+    { photo: null, zoom: 1 },
+    { photo: null, zoom: 1 },
+    { photo: null, zoom: 1 },
   ],
 };
 
-window.__coverErrors = [];
-window.addEventListener('error', (event) => {
-  window.__coverErrors.push(String(event.message || event.error || 'error'));
-});
+const canvas = document.getElementById("cover");
+const ctx = canvas.getContext("2d");
+let fontsReady = false;
 
-const canvas = document.getElementById('cover');
-
-export function render() {
-  renderCover(canvas, state, state.size);
+async function loadAnton() {
+  try {
+    const bytes = Uint8Array.from(atob(ANTON_WOFF2_B64), (c) => c.charCodeAt(0));
+    const face = new FontFace("Anton", bytes, { weight: "400" });
+    await face.load();
+    document.fonts.add(face);
+    fontsReady = true;
+  } catch (err) {
+    window.__coverErrors.push("font load failed: " + err.message);
+  }
 }
 
-export function loadImage(src) {
+function draw() {
+  const size = SIZES[state.size];
+  canvas.width = size.w;
+  canvas.height = size.h;
+  try {
+    renderCover(ctx, state.size, state);
+  } catch (err) {
+    window.__coverErrors.push("render failed: " + err.message);
+  }
+}
+
+function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error('could not load ' + src));
+    img.onerror = () => reject(new Error("image load failed: " + src));
     img.src = src;
   });
 }
 
-export async function loadSampleInto(panelIndex, sampleName) {
-  const img = await loadImage(`samples/${sampleName}.jpg`);
-  const panel = state.panels[panelIndex];
-  panel.photo = img;
-  panel.photoName = sampleName;
-  render();
-  return panel;
-}
-
-// Fill every empty panel with the first panel's photo (one photo, many
-// panels) — the quick path from a single shot to a full cover.
-export function fillAllFromFirst() {
-  const first = state.panels[0];
-  if (!first.photo) return;
-  for (let i = 1; i < state.panels.length; i += 1) {
-    state.panels[i].photo = first.photo;
-    state.panels[i].photoName = first.photoName;
+async function loadSample(name, panelIdx) {
+  try {
+    const img = await loadImage("samples/" + name + ".jpg");
+    state.panels[panelIdx].photo = img;
+    draw();
+  } catch (err) {
+    window.__coverErrors.push(err.message);
   }
-  render();
 }
 
-export async function exportDataURL(sizeName) {
-  await document.fonts.ready;
-  const off = document.createElement('canvas');
-  renderCover(off, state, sizeName);
-  return off.toDataURL('image/png');
+function loadFile(file, panelIdx) {
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  loadImage(url)
+    .then((img) => {
+      state.panels[panelIdx].photo = img;
+      draw();
+    })
+    .catch((err) => window.__coverErrors.push(err.message));
 }
 
-export function fontsLoaded() {
-  return document.fonts.check('16px Anton') && document.fonts.check('600 16px Oswald');
+function wirePanel(box, idx) {
+  const loadBtn = box.querySelector('[data-load]');
+  const sampleBtn = box.querySelector('[data-sample]');
+  const fileInput = box.querySelector('input[type="file"]');
+  const zoom = box.querySelector('input[type="range"]');
+  loadBtn.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", () => loadFile(fileInput.files[0], idx));
+  sampleBtn.addEventListener("click", () => loadSample(sampleBtn.dataset.sample, idx));
+  zoom.addEventListener("input", () => {
+    state.panels[idx].zoom = parseFloat(zoom.value) || 1;
+    draw();
+  });
 }
 
+document.querySelectorAll(".panel-box").forEach(wirePanel);
+
+document.getElementById("title").addEventListener("input", (e) => {
+  state.title = e.target.value;
+  draw();
+});
+document.getElementById("subtitle").addEventListener("input", (e) => {
+  state.subtitle = e.target.value;
+  draw();
+});
+document.getElementById("grade").addEventListener("change", (e) => {
+  state.grade = e.target.value;
+  draw();
+});
+document.querySelectorAll('input[name="size"]').forEach((radio) => {
+  radio.addEventListener("change", () => {
+    if (radio.checked) {
+      state.size = radio.value;
+      draw();
+    }
+  });
+});
+
+async function exportDataURL(sizeName) {
+  const size = SIZES[sizeName] || SIZES[state.size];
+  const off = document.createElement("canvas");
+  off.width = size.w;
+  off.height = size.h;
+  renderCover(off.getContext("2d"), sizeName in SIZES ? sizeName : state.size, state);
+  return off.toDataURL("image/png");
+}
+
+document.getElementById("exportBtn").addEventListener("click", async () => {
+  try {
+    const url = await exportDataURL(state.size);
+    const link = document.getElementById("downloadLink");
+    link.href = url;
+    link.download = "vice-lights-" + state.size + ".png";
+    link.hidden = false;
+    link.click();
+  } catch (err) {
+    window.__coverErrors.push("export failed: " + err.message);
+  }
+});
+
+// CDP / test interface.
 window.__cover = {
   state,
   exportDataURL,
-  fontsLoaded,
-  render,
-  loadSampleInto,
-  fillAllFromFirst,
+  fontsLoaded() {
+    return fontsReady && document.fonts.check('16px Anton');
+  },
 };
 
-// The panel that a stageShot or a sample button loads next, so repeated
-// sample clicks alternate between the two kit photos.
-export function setPanelPan(panelIndex, panX, panY) {
-  const panel = state.panels[panelIndex];
-  panel.panX = panX;
-  panel.panY = panY;
-  render();
-}
-
-function wirePanelBox(box, index) {
-  const fileInput = box.querySelector('input[type=file]');
-  const [uploadBtn, sampleBtn] = box.querySelectorAll('button');
-  const [zoomRange, panXRange, panYRange] = box.querySelectorAll('input[type=range]');
-  const panel = state.panels[index];
-
-  uploadBtn.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', () => {
-    const file = fileInput.files && fileInput.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        panel.photo = await loadImage(reader.result);
-        panel.photoName = file.name;
-        render();
-      } catch (err) {
-        window.__coverErrors.push(String(err));
-      }
-    };
-    reader.readAsDataURL(file);
-  });
-
-  let sampleStep = index;
-  sampleBtn.addEventListener('click', async () => {
-    try {
-      const name = SAMPLES[sampleStep % SAMPLES.length];
-      sampleStep += 1;
-      await loadSampleInto(index, name);
-    } catch (err) {
-      window.__coverErrors.push(String(err));
-    }
-  });
-
-  zoomRange.addEventListener('input', () => {
-    panel.zoom = parseFloat(zoomRange.value);
-    render();
-  });
-  panXRange.addEventListener('input', () => {
-    panel.panX = parseFloat(panXRange.value);
-    render();
-  });
-  panYRange.addEventListener('input', () => {
-    panel.panY = parseFloat(panYRange.value);
-    render();
-  });
-}
-
-function wireControls() {
-  const titleInput = document.getElementById('title');
-  titleInput.addEventListener('input', () => {
-    state.title = titleInput.value;
-    render();
-  });
-  const subtitleInput = document.getElementById('subtitle');
-  subtitleInput.addEventListener('input', () => {
-    state.subtitle = subtitleInput.value;
-    render();
-  });
-  document.querySelectorAll('input[name=size]').forEach((radio) => {
-    radio.addEventListener('change', () => {
-      if (radio.checked) {
-        state.size = radio.value;
-        render();
-      }
-    });
-  });
-  document.querySelectorAll('.panel-box').forEach((box, index) => wirePanelBox(box, index));
-  document.getElementById('fill-all').addEventListener('click', fillAllFromFirst);
-  document.getElementById('export').addEventListener('click', async () => {
-    const url = await exportDataURL(state.size);
-    const a = document.getElementById('download');
-    a.href = url;
-    a.download = `neon-skyline-${state.size}.png`;
-    a.click();
-  });
-}
-
-async function boot() {
-  wireControls();
-  try {
-    await Promise.all([
-      document.fonts.load('16px Anton'),
-      document.fonts.load('600 16px Oswald'),
-      document.fonts.load('400 16px Oswald'),
-    ]);
-  } catch (err) {
-    window.__coverErrors.push(String(err));
+async function applyShotParams() {
+  const q = new URLSearchParams(location.search);
+  const shot = q.get("shot");
+  if (!shot) return;
+  if (q.get("caption")) {
+    state.title = q.get("caption");
+    document.getElementById("title").value = state.title;
   }
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('shot')) {
-    await stageShot(state, render, loadSampleInto);
-  } else {
-    try {
-      await loadSampleInto(0, 'boulevard');
-    } catch (err) {
-      window.__coverErrors.push(String(err));
-    }
-    render();
+  if (q.get("subtitle")) {
+    state.subtitle = q.get("subtitle");
+    document.getElementById("subtitle").value = state.subtitle;
   }
-  window.__shotReady = true;
+  if (q.get("grade") && document.getElementById("grade")) {
+    state.grade = q.get("grade");
+    document.getElementById("grade").value = state.grade;
+  }
+  const photo = q.get("photo");
+  if (photo) {
+    await loadSample(photo, 0);
+    await loadSample(photo === "boulevard" ? "pier" : "boulevard", 1);
+    await loadSample(photo, 2);
+  }
+  if (q.get("size")) {
+    state.size = q.get("size");
+    const radio = document.querySelector(`input[name="size"][value="${state.size}"]`);
+    if (radio) radio.checked = true;
+  }
 }
 
-boot().catch((err) => {
-  window.__coverErrors.push(String(err));
+(async function boot() {
+  await loadAnton();
+  await applyShotParams();
+  draw();
   window.__shotReady = true;
-});
+})();

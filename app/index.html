@@ -1,65 +1,69 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Neon Skyline — GTA 6 Cover Maker</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vice Lights Studio — GTA 6-style cover art maker</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header>
-  <h1>Neon Skyline</h1>
-  <p>Turn your photo and a caption into GTA-style cover art — three neon panels, one export.</p>
+<header class="top">
+  <h1>VICE LIGHTS <span>STUDIO</span></h1>
+  <p class="tag">Turn any photo into GTA 6-style cover art. Offline, no upload.</p>
 </header>
-<main>
-  <section class="preview">
+<main class="layout">
+  <section class="stage">
     <canvas id="cover" width="1080" height="1080"></canvas>
+    <div class="sizes" role="radiogroup" aria-label="Post size">
+      <label><input type="radio" name="size" value="square" checked> Square 1080&times;1080</label>
+      <label><input type="radio" name="size" value="portrait"> Portrait 1080&times;1350</label>
+      <label><input type="radio" name="size" value="landscape"> Landscape 1920&times;1080</label>
+    </div>
   </section>
-  <section class="controls">
-    <label class="field">Title
-      <input id="title" type="text" value="NEON SKYLINE" maxlength="40">
+  <aside class="editor">
+    <label class="field">Caption
+      <input id="title" type="text" value="VICE LIGHTS" maxlength="40" spellcheck="false">
     </label>
     <label class="field">Subtitle
-      <input id="subtitle" type="text" value="VICE CITY NIGHTS" maxlength="40">
+      <input id="subtitle" type="text" value="Neon Coast" maxlength="40" spellcheck="false">
     </label>
-    <fieldset class="sizes">
-      <legend>Export size</legend>
-      <label><input type="radio" name="size" value="square" checked> Square 1080×1080</label>
-      <label><input type="radio" name="size" value="portrait"> Portrait 1080×1350</label>
-      <label><input type="radio" name="size" value="landscape"> Landscape 1920×1080</label>
-    </fieldset>
-    <div class="panel-box" data-panel="0">
-      <h3>Panel 1</h3>
-      <input type="file" accept="image/*" hidden>
-      <button type="button" class="upload">Upload photo</button>
-      <button type="button" class="sample">Use sample</button>
-      <label>Zoom <input type="range" min="1" max="3" step="0.05" value="1"></label>
-      <label>Pan X <input type="range" min="-1" max="1" step="0.05" value="0"></label>
-      <label>Pan Y <input type="range" min="-1" max="1" step="0.05" value="0"></label>
+    <div class="panels">
+      <div class="panel-box" data-panel="0">
+        <h2>Hero panel</h2>
+        <button type="button" data-load="hero">Load photo</button>
+        <button type="button" data-sample="boulevard">Sample: Boulevard</button>
+        <input type="file" accept="image/*" hidden>
+        <label>Zoom <input type="range" min="1" max="2.5" step="0.01" value="1"></label>
+      </div>
+      <div class="panel-box" data-panel="1">
+        <h2>Side panel</h2>
+        <button type="button" data-load="side">Load photo</button>
+        <button type="button" data-sample="pier">Sample: Pier</button>
+        <input type="file" accept="image/*" hidden>
+        <label>Zoom <input type="range" min="1" max="2.5" step="0.01" value="1"></label>
+      </div>
+      <div class="panel-box" data-panel="2">
+        <h2>Bottom panel</h2>
+        <button type="button" data-load="bottom">Load photo</button>
+        <button type="button" data-sample="boulevard">Sample: Boulevard</button>
+        <input type="file" accept="image/*" hidden>
+        <label>Zoom <input type="range" min="1" max="2.5" step="0.01" value="1"></label>
+      </div>
     </div>
-    <div class="panel-box" data-panel="1">
-      <h3>Panel 2</h3>
-      <input type="file" accept="image/*" hidden>
-      <button type="button" class="upload">Upload photo</button>
-      <button type="button" class="sample">Use sample</button>
-      <label>Zoom <input type="range" min="1" max="3" step="0.05" value="1"></label>
-      <label>Pan X <input type="range" min="-1" max="1" step="0.05" value="0"></label>
-      <label>Pan Y <input type="range" min="-1" max="1" step="0.05" value="0"></label>
+    <label class="field">Grade
+      <select id="grade">
+        <option value="sunset" selected>Sunset</option>
+        <option value="neon">Neon Nights</option>
+        <option value="vice">Vice Pink</option>
+        <option value="dusk">Dusk Teal</option>
+      </select>
+    </label>
+    <div class="actions">
+      <button id="exportBtn" type="button">Export PNG</button>
+      <a id="downloadLink" hidden>Download</a>
     </div>
-    <div class="panel-box" data-panel="2">
-      <h3>Panel 3</h3>
-      <input type="file" accept="image/*" hidden>
-      <button type="button" class="upload">Upload photo</button>
-      <button type="button" class="sample">Use sample</button>
-      <label>Zoom <input type="range" min="1" max="3" step="0.05" value="1"></label>
-      <label>Pan X <input type="range" min="-1" max="1" step="0.05" value="0"></label>
-      <label>Pan Y <input type="range" min="-1" max="1" step="0.05" value="0"></label>
-    </div>
-    <button type="button" id="fill-all">Use photo 1 for all panels</button>
-    <button type="button" id="export">Export PNG</button>
-    <a id="download" hidden></a>
-    <p class="note">Photos stay on your machine — nothing is uploaded. Fonts: Anton &amp; Oswald (SIL Open Font License).</p>
-  </section>
+    <p class="hint">Photos stay on your machine. Fonts: Anton (SIL OFL), embedded.</p>
+  </aside>
 </main>
 <script type="module" src="src/main.js"></script>
 </body>
